@@ -48,6 +48,10 @@
             <button onclick="switchTab('vendedores')" id="btn-tab-vendedores" class="px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 transition hover:bg-slate-600">
                 <i class="fa-solid fa-users mr-1"></i> Vendedores
             </button>
+            <button onclick="switchTab('fiados')" id="btn-tab-fiados" class="px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 transition hover:bg-slate-600 relative">
+                <i class="fa-solid fa-book-bookmark mr-1"></i> Fiados 
+                <span id="fiado-alert-badge" class="bg-amber-500 text-slate-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ml-1">0</span>
+            </button>
             <button onclick="exportBackup()" title="Fazer Backup dos Dados" class="px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-cyan-400 transition shadow">
                 <i class="fa-solid fa-cloud-arrow-down mr-1"></i> Backup
             </button>
@@ -179,9 +183,14 @@
                             <i class="fa-solid fa-qrcode mr-1.5"></i> PIX / QR
                         </button>
                     </div>
-                    <button type="button" onclick="promptCheckoutPayment('Cartão')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-3 rounded-xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center cursor-pointer">
-                        <i class="fa-solid fa-credit-card mr-1.5"></i> Cartão (Crédito/Débito)
-                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="promptCheckoutPayment('Cartão')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-3 rounded-xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-credit-card mr-1.5"></i> Cartão
+                        </button>
+                        <button type="button" onclick="promptCheckoutPayment('Fiado')" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-3 rounded-xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-book-open mr-1.5"></i> Fiado / Caderneta
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -382,7 +391,150 @@
                 </div>
             </div>
         </div>
+
+        <!-- AB 5: TABELA E CONTROLE DE FIADOS -->
+        <div id="tab-fiados" class="absolute inset-0 hidden flex flex-col md:flex-row p-4 gap-4 overflow-y-auto">
+            
+            <!-- Formulário de Cadastro de Fiado / Devedor -->
+            <div class="w-full md:w-2/5 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col">
+                <h2 id="fiado-form-title" class="text-base font-bold text-white mb-4 flex items-center">
+                    <i class="fa-solid fa-user-pen text-amber-400 mr-2"></i> Cadastrar Fiado / Conta
+                </h2>
+                
+                <form id="fiado-form" onsubmit="saveFiado(event)" class="flex-1 flex flex-col justify-between space-y-3">
+                    <div class="space-y-3 overflow-y-auto pr-1">
+                        <input type="hidden" id="edit-fiado-id">
+                        
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Nome do Cliente *</label>
+                            <input type="text" id="fiado-name" required placeholder="Ex: João Silva" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Telefone / WhatsApp *</label>
+                                <input type="tel" id="fiado-phone" required placeholder="Ex: 11999998888" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">CPF</label>
+                                <input type="text" id="fiado-cpf" placeholder="000.000.000-00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Endereço Completo</label>
+                            <input type="text" id="fiado-address" placeholder="Ex: Rua das Flores, 123 - Bairro" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Valor Devido (R$) *</label>
+                                <input type="number" step="0.01" id="fiado-amount" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Data Vencimento *</label>
+                                <input type="date" id="fiado-due-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Itens Adquiridos / Observações</label>
+                            <textarea id="fiado-description" rows="2" placeholder="Ex: Carregador 20W + Cabo USB-C" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-3 border-t border-slate-700">
+                        <button type="button" id="cancel-fiado-edit-btn" onclick="resetFiadoForm()" class="hidden w-1/3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2.5 rounded-xl text-sm transition">Cancelar</button>
+                        <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg">Salvar Fiado</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabela & Filtros de Fiados -->
+            <div class="w-full md:w-3/5 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex flex-col">
+                <!-- Resumo Geral -->
+                <div class="grid grid-cols-3 gap-2 mb-4 shrink-0">
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Pendente</span>
+                        <h4 id="fiado-total-pending" class="text-base font-bold text-amber-400">R$ 0,00</h4>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Em Atraso</span>
+                        <h4 id="fiado-total-overdue" class="text-base font-bold text-rose-400">R$ 0,00</h4>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Clientes</span>
+                        <h4 id="fiado-total-clients" class="text-base font-bold text-cyan-400">0</h4>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-base font-bold text-white flex items-center">
+                        <i class="fa-solid fa-address-book text-amber-400 mr-2"></i> Caderneta de Devedores
+                    </h2>
+                    <input type="text" id="search-fiado-input" oninput="renderFiadosList()" placeholder="Buscar nome, CPF ou tel..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs text-white focus:outline-none focus:border-amber-500 w-44">
+                </div>
+
+                <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="fiados-list-container">
+                    <div class="text-center text-slate-500 py-10 text-sm">Carregando caderneta de fiados...</div>
+                </div>
+            </div>
+        </div>
+
     </main>
+
+    <!-- MODAL DE CHECKOUT FIADO / CADERNETA NO CAIXA -->
+    <div id="fiado-checkout-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+            <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1 text-center">Registrar Venda Fiado</h3>
+            <p class="text-xs text-slate-400 mb-4 text-center">Informe os dados do cliente para vincular o débito à caderneta</p>
+            
+            <div class="space-y-3 mb-5 max-h-[300px] overflow-y-auto pr-1">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Selecionar Cliente Existente ou Criar Novo</label>
+                    <select id="fiado-checkout-select" onchange="onSelectFiadoCustomerCheckout(this.value)" class="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
+                        <option value="NEW">+ Cadastrar Novo Cliente</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nome do Cliente *</label>
+                    <input type="text" id="fiado-checkout-name" required placeholder="Ex: Maria Santos" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">WhatsApp / Celular *</label>
+                        <input type="tel" id="fiado-checkout-phone" required placeholder="Ex: 11999998888" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">CPF</label>
+                        <input type="text" id="fiado-checkout-cpf" placeholder="000.000.000-00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Endereço</label>
+                    <input type="text" id="fiado-checkout-address" placeholder="Rua, Número, Bairro" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Data de Vencimento do Fiado *</label>
+                    <input type="date" id="fiado-checkout-due-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="button" onclick="closeFiadoCheckoutModal()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2.5 rounded-xl text-sm transition">Cancelar</button>
+                <button type="button" onclick="confirmFiadoCheckoutSale()" class="w-1/2 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Finalizar Fiado
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL DE PIX COM CHAVE E QR CODE -->
     <div id="pix-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
@@ -546,6 +698,7 @@
         let cart = [];
         let salesHistory = [];
         let sellers = [];
+        let fiados = [];
         let html5QrCode = null;
         let isScannerRunning = false;
         let deferredPrompt = null;
@@ -555,6 +708,7 @@
         // Torna as variáveis acessíveis via window para uso interno
         window.products = products;
         window.cart = cart;
+        window.fiados = fiados;
 
         async function initFirebase() {
             try {
@@ -619,6 +773,15 @@
                 if (sellers.length === 0) seedDefaultSellers();
                 else updateSellersUI();
             }, (error) => { loadLocalSellersFallback(); });
+
+            // Fiados em tempo real
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'fiados'), (snapshot) => {
+                fiados = [];
+                snapshot.forEach(docSnap => {
+                    fiados.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                updateFiadosUI();
+            }, (error) => { loadLocalFiadosFallback(); });
         }
 
         async function seedDefaultProducts() {
@@ -654,6 +817,7 @@
             updateProductUI();
             loadLocalSalesFallback();
             loadLocalSellersFallback();
+            loadLocalFiadosFallback();
         }
 
         function loadLocalSalesFallback() {
@@ -667,6 +831,11 @@
                 { id: '2', name: 'Micael', role: 'Operador', commission: 0 }
             ];
             updateSellersUI();
+        }
+
+        function loadLocalFiadosFallback() {
+            fiados = JSON.parse(localStorage.getItem('mk_tech_fiados')) || [];
+            updateFiadosUI();
         }
 
         function updateProductUI() {
@@ -684,6 +853,51 @@
             document.getElementById('badge-sellers-count').innerText = `${sellers.length} operadores`;
         }
 
+        function updateFiadosUI() {
+            localStorage.setItem('mk_tech_fiados', JSON.stringify(fiados));
+            window.fiados = fiados;
+            renderFiadosList();
+            renderFiadoCheckoutSelect();
+            updateFiadoBadgesAndAlerts();
+        }
+
+        function updateFiadoBadgesAndAlerts() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const pendingFiados = fiados.filter(f => f.status !== 'pago');
+            
+            let overdueCount = 0;
+            let totalPendingAmt = 0;
+            let totalOverdueAmt = 0;
+
+            pendingFiados.forEach(f => {
+                const amt = Number(f.amount || 0);
+                totalPendingAmt += amt;
+                if (f.dueDate && f.dueDate < todayStr) {
+                    overdueCount++;
+                    totalOverdueAmt += amt;
+                }
+            });
+
+            const badge = document.getElementById('fiado-alert-badge');
+            if (badge) {
+                badge.innerText = pendingFiados.length;
+                if (overdueCount > 0) {
+                    badge.className = 'bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ml-1 animate-pulse';
+                } else {
+                    badge.className = 'bg-amber-500 text-slate-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ml-1';
+                }
+            }
+
+            const totalPendingEl = document.getElementById('fiado-total-pending');
+            if (totalPendingEl) totalPendingEl.innerText = `R$ ${totalPendingAmt.toFixed(2)}`;
+
+            const totalOverdueEl = document.getElementById('fiado-total-overdue');
+            if (totalOverdueEl) totalOverdueEl.innerText = `R$ ${totalOverdueAmt.toFixed(2)}`;
+
+            const totalClientsEl = document.getElementById('fiado-total-clients');
+            if (totalClientsEl) totalClientsEl.innerText = pendingFiados.length;
+        }
+
         function renderSellersSelect() {
             const select = document.getElementById('active-seller-select');
             const currentVal = select.value;
@@ -693,17 +907,17 @@
 
         // Expondo funções de gerenciamento para o HTML (Window)
         window.switchTab = function(tabName) {
-            const tabs = ['caixa', 'produtos', 'relatorios', 'vendedores'];
+            const tabs = ['caixa', 'produtos', 'relatorios', 'vendedores', 'fiados'];
             tabs.forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
                 if (el) el.classList.add('hidden');
                 const btn = document.getElementById(`btn-tab-${t}`);
-                if (btn) btn.className = "px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 transition hover:bg-slate-600";
+                if (btn) btn.className = "px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 transition hover:bg-slate-600 relative";
             });
             const targetTab = document.getElementById(`tab-${tabName}`);
             if (targetTab) targetTab.classList.remove('hidden');
             const targetBtn = document.getElementById(`btn-tab-${tabName}`);
-            if (targetBtn) targetBtn.className = "px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white transition shadow hover:bg-indigo-500";
+            if (targetBtn) targetBtn.className = "px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white transition shadow hover:bg-indigo-500 relative";
             if (tabName !== 'caixa' && isScannerRunning) window.toggleScanner();
         }
 
@@ -725,6 +939,299 @@
             const modal = document.getElementById('custom-modal');
             modal.classList.remove('flex');
             modal.classList.add('hidden');
+        }
+
+        window.saveFiado = async function(event) {
+            event.preventDefault();
+            const id = document.getElementById('edit-fiado-id').value;
+            const name = document.getElementById('fiado-name').value.trim();
+            const phone = document.getElementById('fiado-phone').value.trim();
+            const cpf = document.getElementById('fiado-cpf').value.trim();
+            const address = document.getElementById('fiado-address').value.trim();
+            const amount = parseFloat(document.getElementById('fiado-amount').value) || 0;
+            const dueDate = document.getElementById('fiado-due-date').value;
+            const description = document.getElementById('fiado-description').value.trim();
+
+            const fiadoId = id ? id : 'fiado-' + Date.now();
+            const existing = fiados.find(f => f.id === fiadoId);
+            const status = existing ? existing.status : 'pendente';
+
+            const fiadoData = {
+                name,
+                phone,
+                cpf,
+                address,
+                amount,
+                dueDate,
+                description,
+                status,
+                createdAt: existing?.createdAt || new Date().toISOString()
+            };
+
+            if (db && auth?.currentUser) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'fiados', fiadoId), fiadoData);
+                } catch(e) {
+                    saveLocalFiadoFallback(fiadoId, fiadoData);
+                }
+            } else {
+                saveLocalFiadoFallback(fiadoId, fiadoData);
+            }
+            window.resetFiadoForm();
+        }
+
+        function saveLocalFiadoFallback(id, data) {
+            const index = fiados.findIndex(f => f.id === id);
+            if (index >= 0) fiados[index] = { id, ...data };
+            else fiados.push({ id, ...data });
+            updateFiadosUI();
+        }
+
+        window.editFiado = function(id) {
+            const f = fiados.find(item => item.id === id);
+            if (!f) return;
+            document.getElementById('edit-fiado-id').value = f.id;
+            document.getElementById('fiado-name').value = f.name;
+            document.getElementById('fiado-phone').value = f.phone || '';
+            document.getElementById('fiado-cpf').value = f.cpf || '';
+            document.getElementById('fiado-address').value = f.address || '';
+            document.getElementById('fiado-amount').value = f.amount;
+            document.getElementById('fiado-due-date').value = f.dueDate || '';
+            document.getElementById('fiado-description').value = f.description || '';
+            
+            document.getElementById('fiado-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i> Editar Fiado';
+            document.getElementById('cancel-fiado-edit-btn').classList.remove('hidden');
+        }
+
+        window.resetFiadoForm = function() {
+            document.getElementById('fiado-form').reset();
+            document.getElementById('edit-fiado-id').value = '';
+            document.getElementById('fiado-form-title').innerHTML = '<i class="fa-solid fa-user-pen text-amber-400 mr-2"></i> Cadastrar Fiado / Conta';
+            document.getElementById('cancel-fiado-edit-btn').classList.add('hidden');
+        }
+
+        window.deleteFiado = async function(id) {
+            window.showCustomModal("Confirmação", "Deseja realmente remover esta conta da caderneta?", async () => {
+                if (db && auth?.currentUser) {
+                    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'fiados', id)); } catch(e){}
+                }
+                fiados = fiados.filter(f => f.id !== id);
+                updateFiadosUI();
+            });
+        }
+
+        window.payOffFiado = async function(id) {
+            const f = fiados.find(item => item.id === id);
+            if (!f) return;
+            window.showCustomModal("Quitar Conta", `Confirmar o recebimento total de R$ ${Number(f.amount).toFixed(2)} do cliente ${f.name}?`, async () => {
+                f.status = 'pago';
+                f.paidAt = new Date().toISOString();
+                if (db && auth?.currentUser) {
+                    try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'fiados', id), f); } catch(e){}
+                }
+                updateFiadosUI();
+            });
+        }
+
+        window.sendFiadoWhatsAppReminder = function(id) {
+            const f = fiados.find(item => item.id === id);
+            if (!f) return;
+
+            const cleanPhone = (f.phone || '').replace(/\D/g, '');
+            if (!cleanPhone) {
+                window.showCustomModal("Aviso", "Este cliente não possui um número de telefone/WhatsApp cadastrado.");
+                return;
+            }
+
+            const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : '55' + cleanPhone;
+            const dueDateFormatted = f.dueDate ? f.dueDate.split('-').reverse().join('/') : 'A combinar';
+            const amountFormatted = Number(f.amount).toFixed(2);
+
+            // MENSAGEM LEVE E AMIGÁVEL DE COBRANÇA
+            let msg = `Olá, ${f.name}! Tudo bem? 😊\n\n`;
+            msg += `Passando com carinho da *MK TECH+* apenas para lembrar da sua continha no valor de *R$ ${amountFormatted}*, com vencimento em *${dueDateFormatted}*.\n\n`;
+            if (f.description) {
+                msg += `*Itens:* ${f.description}\n\n`;
+            }
+            msg += `Você pode efetuar o pagamento via PIX se preferir:\n`;
+            msg += `*Chave PIX:* 05375147408 (MK TECH MAIS COMERCIO)\n\n`;
+            msg += `Caso já tenha efetuado o pagamento, por gentileza desconsidere esta mensagem. Muito obrigado pela preferência! 🙏✨`;
+
+            const waUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${encodeURIComponent(msg)}`;
+            window.open(waUrl, '_blank');
+        }
+
+        function renderFiadosList() {
+            const container = document.getElementById('fiados-list-container');
+            const filterVal = (document.getElementById('search-fiado-input')?.value || '').toLowerCase();
+
+            const filtered = fiados.filter(f => 
+                (f.name || '').toLowerCase().includes(filterVal) ||
+                (f.cpf || '').toLowerCase().includes(filterVal) ||
+                (f.phone || '').toLowerCase().includes(filterVal)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-500 py-10 text-sm">Nenhum fiado registrado.</div>`;
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            container.innerHTML = filtered.slice().reverse().map(f => {
+                const isPaid = f.status === 'pago';
+                const isOverdue = !isPaid && f.dueDate && f.dueDate < todayStr;
+                const isToday = !isPaid && f.dueDate && f.dueDate === todayStr;
+
+                let statusBadge = `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Pago</span>`;
+                if (isOverdue) {
+                    statusBadge = `<span class="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold animate-pulse">Atrasado!</span>`;
+                } else if (isToday) {
+                    statusBadge = `<span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Vence Hoje</span>`;
+                } else if (!isPaid) {
+                    statusBadge = `<span class="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">Em Dia</span>`;
+                }
+
+                const borderStyle = isPaid ? 'border-slate-800 opacity-60' : isOverdue ? 'border-rose-500/80 bg-rose-950/10' : isToday ? 'border-amber-500/80 bg-amber-950/10' : 'border-slate-700/60';
+
+                const dueDateFormatted = f.dueDate ? f.dueDate.split('-').reverse().join('/') : 'N/I';
+
+                return `
+                    <div class="bg-slate-900 border ${borderStyle} rounded-xl p-3.5 flex flex-col gap-2.5 shadow-md">
+                        <div class="flex justify-between items-start gap-2">
+                            <div>
+                                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                    ${f.name}
+                                    ${statusBadge}
+                                </h4>
+                                <div class="text-xs text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span><i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i>${f.phone || 'Sem Tel'}</span>
+                                    <span>•</span>
+                                    <span>CPF: ${f.cpf || 'Não Informado'}</span>
+                                </div>
+                                ${f.address ? `<div class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-indigo-400 mr-1"></i>${f.address}</div>` : ''}
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-xs text-slate-400 block">Devendo:</span>
+                                <span class="text-base font-extrabold ${isPaid ? 'text-slate-400 line-through' : 'text-amber-400'}">R$ ${Number(f.amount).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        ${f.description ? `
+                            <div class="bg-slate-800/80 border border-slate-700/50 rounded-lg p-2 text-xs text-slate-300">
+                                <strong>Itens/Obs:</strong> ${f.description}
+                            </div>
+                        ` : ''}
+
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-800/80">
+                            <span class="text-xs ${isOverdue ? 'text-rose-400 font-bold' : isToday ? 'text-amber-400 font-bold' : 'text-slate-400'}">
+                                Vencimento: ${dueDateFormatted}
+                            </span>
+
+                            <div class="flex items-center space-x-1.5">
+                                ${!isPaid ? `
+                                    <button onclick="sendFiadoWhatsAppReminder('${f.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow" title="Enviar cobrança via WhatsApp">
+                                        <i class="fa-brands fa-whatsapp"></i> Cobrar
+                                    </button>
+                                    <button onclick="payOffFiado('${f.id}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow" title="Dar Baixa / Quitar">
+                                        <i class="fa-solid fa-check"></i> Quitar
+                                    </button>
+                                ` : ''}
+                                <button onclick="editFiado('${f.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 rounded-lg text-xs transition" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteFiado('${f.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg text-xs transition" title="Excluir">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFiadoCheckoutSelect() {
+            const select = document.getElementById('fiado-checkout-select');
+            if (!select) return;
+            const currentVal = select.value;
+            const pendingClients = fiados.filter(f => f.status !== 'pago');
+            
+            select.innerHTML = `<option value="NEW">+ Cadastrar Novo Cliente</option>` + pendingClients.map(f => `<option value="${f.id}">${f.name} - Tel: ${f.phone || 'S/N'}</option>`).join('');
+            if (currentVal) select.value = currentVal;
+        }
+
+        window.onSelectFiadoCustomerCheckout = function(val) {
+            if (val === 'NEW') {
+                document.getElementById('fiado-checkout-name').value = '';
+                document.getElementById('fiado-checkout-phone').value = '';
+                document.getElementById('fiado-checkout-cpf').value = '';
+                document.getElementById('fiado-checkout-address').value = '';
+            } else {
+                const selected = fiados.find(f => f.id === val);
+                if (selected) {
+                    document.getElementById('fiado-checkout-name').value = selected.name || '';
+                    document.getElementById('fiado-checkout-phone').value = selected.phone || '';
+                    document.getElementById('fiado-checkout-cpf').value = selected.cpf || '';
+                    document.getElementById('fiado-checkout-address').value = selected.address || '';
+                }
+            }
+        }
+
+        window.closeFiadoCheckoutModal = function() {
+            document.getElementById('fiado-checkout-modal').classList.remove('flex');
+            document.getElementById('fiado-checkout-modal').classList.add('hidden');
+        }
+
+        window.confirmFiadoCheckoutSale = function() {
+            const name = document.getElementById('fiado-checkout-name').value.trim();
+            const phone = document.getElementById('fiado-checkout-phone').value.trim();
+            const cpf = document.getElementById('fiado-checkout-cpf').value.trim();
+            const address = document.getElementById('fiado-checkout-address').value.trim();
+            const dueDate = document.getElementById('fiado-checkout-due-date').value;
+
+            if (!name || !phone || !dueDate) {
+                window.showCustomModal("Atenção", "Por favor, preencha pelo menos Nome, WhatsApp e Data de Vencimento do cliente.");
+                return;
+            }
+
+            window.closeFiadoCheckoutModal();
+
+            // Salva ou atualiza a conta no Fiado
+            let subtotal = cart.reduce((acc, item) => acc + (Number(item.price) * item.quantity), 0);
+            const discountInput = parseFloat(document.getElementById('discount-value').value) || 0;
+            const discountType = document.getElementById('discount-type').value;
+            let discountAmount = discountType === 'percent' ? subtotal * (discountInput / 100) : discountInput;
+            const finalTotal = Math.max(0, subtotal - discountAmount);
+            const itemNames = cart.map(i => `${i.quantity}x ${i.name}`).join(', ');
+
+            const selectVal = document.getElementById('fiado-checkout-select').value;
+            let fiadoId = selectVal !== 'NEW' ? selectVal : 'fiado-' + Date.now();
+            const existing = fiados.find(f => f.id === fiadoId);
+
+            const newAmount = (existing ? Number(existing.amount || 0) : 0) + finalTotal;
+            const newDesc = existing && existing.description ? `${existing.description} | Nova Compra: ${itemNames}` : itemNames;
+
+            const fiadoRecord = {
+                name,
+                phone,
+                cpf,
+                address,
+                amount: newAmount,
+                dueDate,
+                description: newDesc,
+                status: 'pendente',
+                createdAt: existing?.createdAt || new Date().toISOString()
+            };
+
+            if (db && auth?.currentUser) {
+                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'fiados', fiadoId), fiadoRecord).catch(e => {});
+            }
+            saveLocalFiadoFallback(fiadoId, fiadoRecord);
+
+            // Conclui a venda no caixa com método Fiado
+            currentPaymentMethod = `Fiado (${name})`;
+            document.getElementById('checkout-client-phone').value = phone;
+            executeFinalizeSale();
         }
 
         window.saveSeller = async function(event) {
@@ -1178,6 +1685,23 @@
 
             if (paymentMethod === 'PIX') {
                 initiatePixPayment();
+                return;
+            }
+
+            if (paymentMethod === 'Fiado') {
+                renderFiadoCheckoutSelect();
+                document.getElementById('fiado-checkout-name').value = '';
+                document.getElementById('fiado-checkout-phone').value = '';
+                document.getElementById('fiado-checkout-cpf').value = '';
+                document.getElementById('fiado-checkout-address').value = '';
+                
+                // Define vencimento padrão para 30 dias à frente
+                const defaultDue = new Date();
+                defaultDue.setDate(defaultDue.getDate() + 30);
+                document.getElementById('fiado-checkout-due-date').value = defaultDue.toISOString().split('T')[0];
+
+                document.getElementById('fiado-checkout-modal').classList.remove('hidden');
+                document.getElementById('fiado-checkout-modal').classList.add('flex');
                 return;
             }
 
